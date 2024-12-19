@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+
+<html lang="cs">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Sledování projektů</title>
+
+    <style>
+
+        body {
+
+            font-family: Arial, sans-serif;
+
+            margin: 0;
+
+            padding: 20px;
+
+            background-color: #f5f5f5;
+
+        }
+
+        .container {
+
+            max-width: 1200px;
+
+            margin: 0 auto;
+
+        }
+
+        .card {
+
+            background: white;
+
+            border-radius: 8px;
+
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+            margin-bottom: 20px;
+
+            padding: 20px;
+
+        }
+
+        .header {
+
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+
+            margin-bottom: 20px;
+
+        }
+
+        .btn {
+
+            background: #4CAF50;
+
+            color: white;
+
+            border: none;
+
+            padding: 8px 16px;
+
+            border-radius: 4px;
+
+            cursor: pointer;
+
+        }
+
+        .btn-delete {
+
+            background: #f44336;
+
+        }
+
+        .btn:hover {
+
+            opacity: 0.9;
+
+        }
+
+        .input-group {
+
+            display: flex;
+
+            gap: 10px;
+
+            margin-bottom: 20px;
+
+        }
+
+        input[type="text"],
+
+        input[type="date"] {
+
+            padding: 8px;
+
+            border: 1px solid #ddd;
+
+            border-radius: 4px;
+
+            flex-grow: 1;
+
+        }
+
+        table {
+
+            width: 100%;
+
+            border-collapse: collapse;
+
+        }
+
+        th, td {
+
+            padding: 12px;
+
+            text-align: left;
+
+            border-bottom: 1px solid #ddd;
+
+        }
+
+        .status-late { background-color: #ffebee; }
+
+        .status-soon { background-color: #fff3e0; }
+
+        .status-ok { background-color: #e8f5e9; }
+
+    </style>
+
+</head>
+
+<body>
+
+    <div class="container">
+
+        <div class="card">
+
+            <h1>Přehled projektů</h1>
+
+            <div class="input-group">
+
+                <input type="text" id="newProjectName" placeholder="Název nového projektu">
+
+                <button class="btn" onclick="addProject()">Přidat projekt</button>
+
+            </div>
+
+        </div>
+
+        <div id="projectsList"></div>
+
+    </div>
+
+
+
+    <script>
+
+        let projects = JSON.parse(localStorage.getItem('projects')) || [];
+
+
+
+        function saveProjects() {
+
+            localStorage.setItem('projects', JSON.stringify(projects));
+
+            renderProjects();
+
+        }
+
+
+
+        function addProject() {
+
+            const name = document.getElementById('newProjectName').value;
+
+            if (!name) return;
+
+            
+
+            projects.push({
+
+                id: Date.now(),
+
+                name: name,
+
+                deliverables: []
+
+            });
+
+            
+
+            document.getElementById('newProjectName').value = '';
+
+            saveProjects();
+
+        }
+
+
+
+        function addDeliverable(projectId) {
+
+            const projectDiv = document.getElementById(`project-${projectId}`);
+
+            const name = projectDiv.querySelector('.deliverable-name').value;
+
+            const deadline = projectDiv.querySelector('.deliverable-deadline').value;
+
+            
+
+            if (!name || !deadline) return;
+
+
+
+            const project = projects.find(p => p.id === projectId);
+
+            if (project) {
+
+                project.deliverables.push({
+
+                    id: Date.now(),
+
+                    name: name,
+
+                    deadline: deadline,
+
+                    completed: false
+
+                });
+
+                
+
+                projectDiv.querySelector('.deliverable-name').value = '';
+
+                projectDiv.querySelector('.deliverable-deadline').value = '';
+
+                saveProjects();
+
+            }
+
+        }
+
+
+
+        function toggleDeliverable(projectId, deliverableId) {
+
+            const project = projects.find(p => p.id === projectId);
+
+            if (project) {
+
+                const deliverable = project.deliverables.find(d => d.id === deliverableId);
+
+                if (deliverable) {
+
+                    deliverable.completed = !deliverable.completed;
+
+                    saveProjects();
+
+                }
+
+            }
+
+        }
+
+
+
+        function removeProject(projectId) {
+
+            projects = projects.filter(p => p.id !== projectId);
+
+            saveProjects();
+
+        }
+
+
+
+        function removeDeliverable(projectId, deliverableId) {
+
+            const project = projects.find(p => p.id === projectId);
+
+            if (project) {
+
+                project.deliverables = project.deliverables.filter(d => d.id !== deliverableId);
+
+                saveProjects();
+
+            }
+
+        }
+
+
+
+        function getDaysUntil(deadline) {
+
+            const today = new Date();
+
+            const deadlineDate = new Date(deadline);
+
+            const diffTime = deadlineDate - today;
+
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            return diffDays;
+
+        }
+
+
+
+        function getStatusClass(deadline) {
+
+            const daysLeft = getDaysUntil(deadline);
+
+            if (daysLeft < 0) return 'status-late';
+
+            if (daysLeft < 14) return 'status-soon';
+
+            return 'status-ok';
+
+        }
+
+
+
+        function renderProjects() {
+
+            const projectsList = document.getElementById('projectsList');
+
+            projectsList.innerHTML = projects.map(project => `
+
+                <div id="project-${project.id}" class="card">
+
+                    <div class="header">
+
+                        <h2>${project.name}</h2>
+
+                        <button class="btn btn-delete" onclick="removeProject(${project.id})">Smazat projekt</button>
+
+                    </div>
+
+                    
+
+                    <div class="input-group">
+
+                        <input type="text" class="deliverable-name" placeholder="Název výstupu">
+
+                        <input type="date" class="deliverable-deadline">
+
+                        <button class="btn" onclick="addDeliverable(${project.id})">Přidat výstup</button>
+
+                    </div>
+
+
+
+                    <table>
+
+                        <thead>
+
+                            <tr>
+
+                                <th>Výstup</th>
+
+                                <th>Termín</th>
+
+                                <th>Zbývá dnů</th>
+
+                                <th>Hotovo</th>
+
+                                <th>Akce</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody>
+
+                            ${project.deliverables.map(deliverable => `
+
+                                <tr class="${getStatusClass(deliverable.deadline)}">
+
+                                    <td>${deliverable.name}</td>
+
+                                    <td>${new Date(deliverable.deadline).toLocaleDateString('cs-CZ')}</td>
+
+                                    <td>${getDaysUntil(deliverable.deadline)}</td>
+
+                                    <td>
+
+                                        <input type="checkbox" 
+
+                                            ${deliverable.completed ? 'checked' : ''}
+
+                                            onchange="toggleDeliverable(${project.id}, ${deliverable.id})">
+
+                                    </td>
+
+                                    <td>
+
+                                        <button class="btn btn-delete" 
+
+                                            onclick="removeDeliverable(${project.id}, ${deliverable.id})">Smazat</button>
+
+                                    </td>
+
+                                </tr>
+
+                            `).join('')}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            `).join('');
+
+        }
+
+
+
+        // Inicializace
+
+        renderProjects();
+
+    </script>
+
+</body>
+
+</html>
